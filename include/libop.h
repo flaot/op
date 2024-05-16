@@ -252,8 +252,10 @@ public:
 	void FindMultiColor(long x1, long y1, long x2, long y2, const wchar_t* first_color, const wchar_t* offset_color, double sim, long dir, long* x, long* y, long* ret);
 	//根据指定的多点查找所有颜色坐标
 	void FindMultiColorEx(long x1, long y1, long x2, long y2, const wchar_t* first_color, const wchar_t* offset_color, double sim, long dir,std::wstring& retstr);
-	//查找指定区域内的图片
+	//查找指定区域内的图片,返回图片索引
 	void FindPic(long x1,long y1,long x2,long y2,const wchar_t* files, const wchar_t* delta_color,double sim,long dir,long* x,long* y,long* ret);
+	//查找指定区域内的图片,返回图片名
+	void FindPicS(long x1, long y1, long x2, long y2, const wchar_t* files, const wchar_t* delta_color, double sim, long dir, long* x, long* y, std::wstring& retstr);
 	//查找多个图片
 	void FindPicEx(long x1, long y1, long x2, long y2, const wchar_t* files, const wchar_t* delta_color, double sim, long dir,std::wstring& retstr);
 	//

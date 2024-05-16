@@ -12,6 +12,7 @@ long Path2GlobalPath(const std::wstring&file, const std::wstring& curr_path, std
 
 void split(const std::wstring& s, std::vector<std::wstring>& v, const std::wstring& c);
 void split(const std::string& s, std::vector<std::string>& v, const std::string& c);
+std::wstring SplitAndGetToken(const wchar_t* str, long index, wchar_t delimiter);
 
 void wstring2upper(std::wstring& s);
 void string2upper(std::string& s);
