@@ -962,6 +962,36 @@ void libop::FindPic(long x1, long y1, long x2, long y2, const wchar_t *files, co
 		}*/
 	}
 }
+
+//查找指定区域内的图片
+void libop::FindPicS(long x1, long y1, long x2, long y2, const wchar_t* files, const wchar_t* delta_color, DOUBLE sim, long dir, long* x, long* y, std::wstring& retstr)
+{
+
+	
+	*x = *y = -1;
+
+	if (m_context->bkproc.check_bind() && m_context->bkproc.RectConvert(x1, y1, x2, y2))
+	{
+		if (!m_context->bkproc.requestCapture(x1, y1, x2 - x1, y2 - y1, m_context->image_proc._src))
+		{
+			setlog("error requestCapture");
+		}
+		else
+		{
+			m_context->image_proc.set_offset(x1, y1);
+			long ret = m_context->image_proc.FindPic(files, delta_color, sim, 0, *x, *y);
+			retstr = SplitAndGetToken(files, ret, L'|');
+		}
+
+		/*if (*ret) {
+			rx += x1; ry += y1;
+			rx -= m_context->bkproc._pbkdisplay->_client_x;
+			ry -= m_context->bkproc._pbkdisplay->_client_y;
+		}*/
+	}
+}
+
+
 //查找多个图片
 void libop::FindPicEx(long x1, long y1, long x2, long y2, const wchar_t *files, const wchar_t *delta_color, DOUBLE sim, long dir, std::wstring &retstr)
 {

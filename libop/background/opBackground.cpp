@@ -34,115 +34,124 @@ opBackground::~opBackground()
 
 long opBackground::BindWindow(long hwnd, const wstring &sdisplay, const wstring &smouse, const wstring &skeypad, long mode)
 {
-	//step 1.避免重复绑定
-	UnBindWindow();
-
-	HWND hWnd = hwnd == 0 ? GetDesktopWindow() : HWND(hwnd);
-	//step 2.check hwnd
-	if (!::IsWindow(hWnd))
+	try
 	{
-		setlog("Invalid window handles");
-		return 0;
-	}
+		//step 1.避免重复绑定
+		UnBindWindow();
 
-	int display, mouse, keypad;
-	//step 3.check display... mode
-	if (sdisplay == L"normal")
-		display = RDT_NORMAL;
-	else if (sdisplay == L"normal.dxgi")
-		display = RDT_NORMAL_DXGI;
+		HWND hWnd = hwnd == 0 ? GetDesktopWindow() : HWND(hwnd);
+		//step 2.check hwnd
+		if (!::IsWindow(hWnd))
+		{
+			setlog("Invalid window handles");
+			return 0;
+		}
+
+		int display, mouse, keypad;
+		//step 3.check display... mode
+		if (sdisplay == L"normal")
+			display = RDT_NORMAL;
+		else if (sdisplay == L"normal.dxgi")
+			display = RDT_NORMAL_DXGI;
 #ifdef _WIN32_WINNT_WIN11
-	else if (sdisplay == L"normal.wgc")
-		display = RDT_NORMAL_WGC;
+		else if (sdisplay == L"normal.wgc")
+			display = RDT_NORMAL_WGC;
 #endif
-	else if (sdisplay == L"gdi")
-		display = RDT_GDI;
-	else if (sdisplay == L"gdi2")
-		display = RDT_GDI2;
-	else if (sdisplay == L"dx2")
-		display = RDT_GDI_DX2;
-	else if (sdisplay == L"dx")
-		display = RDT_DX_DEFAULT;
-	else if (sdisplay == L"dx.d3d9")
-		display = RDT_DX_D3D9;
-	else if (sdisplay == L"dx.d3d10")
-		display = RDT_DX_D3D10;
-	else if (sdisplay == L"dx.d3d11")
-		display = RDT_DX_D3D11;
-	else if (sdisplay == L"dx.d3d12")
-		display = RDT_DX_D3D12;
-	else if (sdisplay == L"opengl")
-		display = RDT_GL_DEFAULT;
-	else if (sdisplay == L"opengl.std")
-		display = RDT_GL_STD;
-	else if (sdisplay == L"opengl.nox")
-		display = RDT_GL_NOX;
-	else if (sdisplay == L"opengl.es")
-		display = RDT_GL_ES;
-	else if (sdisplay == L"opengl.fi")//glFinish
-		display = RDT_GL_FI;
-	else
-	{
-		setlog(L"error display mode: %s", sdisplay.c_str());
-		return 0;
-	}
-	//check mouse
-	if (smouse == L"normal")
-		mouse = INPUT_TYPE::IN_NORMAL;
-	else if (smouse == L"normal.hd")
-		mouse = INPUT_TYPE::IN_NORMAL2;
-	else if (smouse == L"windows")
-		mouse = INPUT_TYPE::IN_WINDOWS;
-	else if (smouse == L"dx")
-		mouse = INPUT_TYPE::IN_DX;
-	else
-	{
-		setlog(L"error mouse mode: %s", smouse.c_str());
-		return 0;
-	}
-	//check keypad
-	if (skeypad == L"normal")
-		keypad = INPUT_TYPE::IN_NORMAL;
-	else if (skeypad == L"normal.hd")
-		keypad = INPUT_TYPE::IN_NORMAL2;
-	else if (skeypad == L"windows")
-		keypad = INPUT_TYPE::IN_WINDOWS;
-	else
-	{
-		setlog(L"error keypad mode: %s", sdisplay.c_str());
-		return 0;
-	}
-	//step 4.init
-	_mode = mode;
-	_display = display;
-	_hwnd = hWnd;
-	set_display_method(L"screen");
+		else if (sdisplay == L"gdi")
+			display = RDT_GDI;
+		else if (sdisplay == L"gdi2")
+			display = RDT_GDI2;
+		else if (sdisplay == L"dx2")
+			display = RDT_GDI_DX2;
+		else if (sdisplay == L"dx")
+			display = RDT_DX_DEFAULT;
+		else if (sdisplay == L"dx.d3d9")
+			display = RDT_DX_D3D9;
+		else if (sdisplay == L"dx.d3d10")
+			display = RDT_DX_D3D10;
+		else if (sdisplay == L"dx.d3d11")
+			display = RDT_DX_D3D11;
+		else if (sdisplay == L"dx.d3d12")
+			display = RDT_DX_D3D12;
+		else if (sdisplay == L"opengl")
+			display = RDT_GL_DEFAULT;
+		else if (sdisplay == L"opengl.std")
+			display = RDT_GL_STD;
+		else if (sdisplay == L"opengl.nox")
+			display = RDT_GL_NOX;
+		else if (sdisplay == L"opengl.es")
+			display = RDT_GL_ES;
+		else if (sdisplay == L"opengl.fi")//glFinish
+			display = RDT_GL_FI;
+		else
+		{
+			setlog(L"error display mode: %s", sdisplay.c_str());
+			return 0;
+		}
+		//check mouse
+		if (smouse == L"normal")
+			mouse = INPUT_TYPE::IN_NORMAL;
+		else if (smouse == L"normal.hd")
+			mouse = INPUT_TYPE::IN_NORMAL2;
+		else if (smouse == L"windows")
+			mouse = INPUT_TYPE::IN_WINDOWS;
+		else if (smouse == L"dx")
+			mouse = INPUT_TYPE::IN_DX;
+		else
+		{
+			setlog(L"error mouse mode: %s", smouse.c_str());
+			return 0;
+		}
+		//check keypad
+		if (skeypad == L"normal")
+			keypad = INPUT_TYPE::IN_NORMAL;
+		else if (skeypad == L"normal.hd")
+			keypad = INPUT_TYPE::IN_NORMAL2;
+		else if (skeypad == L"windows")
+			keypad = INPUT_TYPE::IN_WINDOWS;
+		else
+		{
+			setlog(L"error keypad mode: %s", sdisplay.c_str());
+			return 0;
+		}
+		//step 4.init
+		_mode = mode;
+		_display = display;
+		_hwnd = hWnd;
+		set_display_method(L"screen");
 
-	//step 5. create instance
-	_pbkdisplay = createDisplay(display);
-	_bkmouse = createMouse(mouse);
-	_keypad = createKeypad(keypad);
+		//step 5. create instance
+		_pbkdisplay = createDisplay(display);
+		_bkmouse = createMouse(mouse);
+		_keypad = createKeypad(keypad);
 
-	if (!_pbkdisplay || !_bkmouse || !_keypad)
+		if (!_pbkdisplay || !_bkmouse || !_keypad)
+		{
+			setlog("create instance error!");
+			UnBindWindow();
+			return 0;
+		}
+		//step 6.try bind
+		if (_pbkdisplay->Bind(hWnd, display) != 1 ||
+			_bkmouse->Bind(hWnd, mouse) != 1 ||
+			_keypad->Bind(hWnd, keypad) != 1)
+		{
+			UnBindWindow();
+			return 0;
+		}
+
+		//等待线程创建好
+		Sleep(200);
+
+		_is_bind = 1;
+		return 1;
+	}
+	catch (const std::exception& e)
 	{
-		setlog("create instance error!");
+		setlog(e.what());
 		UnBindWindow();
 		return 0;
 	}
-	//step 6.try bind
-	if (_pbkdisplay->Bind(hWnd, display) != 1 ||
-		_bkmouse->Bind(hWnd, mouse) != 1 ||
-		_keypad->Bind(hWnd, keypad) != 1)
-	{
-		UnBindWindow();
-		return 0;
-	}
-
-	//等待线程创建好
-	Sleep(200);
-
-	_is_bind = 1;
-	return 1;
 }
 
 long opBackground::UnBindWindow()

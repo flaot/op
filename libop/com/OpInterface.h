@@ -264,6 +264,8 @@ public:
 	STDMETHOD(FindMultiColorEx)(LONG x1, LONG y1, LONG x2, LONG y2, BSTR first_color, BSTR offset_color, DOUBLE sim, LONG dir,BSTR* retstr);
 	//查找指定区域内的图片
 	STDMETHOD(FindPic)(LONG x1,LONG y1,LONG x2,LONG y2,BSTR files, BSTR delta_color,DOUBLE sim,LONG dir,VARIANT* x,VARIANT* y,LONG* ret);
+	//查找指定区域内的图片,返回图片名
+	STDMETHOD(FindPicS)(LONG x1, LONG y1, LONG x2, LONG y2, BSTR files, BSTR delta_color, DOUBLE sim, LONG dir, VARIANT* x, VARIANT* y, BSTR* retstr);
 	//查找多个图片
 	STDMETHOD(FindPicEx)(LONG x1, LONG y1, LONG x2, LONG y2, BSTR files, BSTR delta_color, DOUBLE sim, LONG dir,BSTR* retstr);
 	//这个函数可以查找多个图片, 并且返回所有找到的图像的坐标.此函数同FindPicEx.只是返回值不同.(file1,x,y|file2,x,y|...)

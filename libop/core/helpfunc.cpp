@@ -169,6 +169,25 @@ void split(const std::string& s, std::vector<std::string>& v, const std::string&
 		v.emplace_back(s.substr(pos1));
 }
 
+std::wstring SplitAndGetToken(const wchar_t* str, long index, wchar_t delimiter) {
+	std::wstring result;
+	if (str) {
+		std::wstring modifiableStr(str);
+		wchar_t* context = nullptr;
+		wchar_t* token = wcstok_s(const_cast<wchar_t*>(modifiableStr.c_str()), &delimiter, &context);
+		long currentTokenIndex = 0;
+		while (token != nullptr) {
+			if (currentTokenIndex == index) {
+				result = token;
+				break;
+			}
+			currentTokenIndex++;
+			token = wcstok_s(nullptr, &delimiter, &context);
+		}
+	}
+	return result;
+}
+
 void wstring2upper(std::wstring& s) {
 	std::transform(s.begin(), s.end(),s.begin(), towupper);
 }
