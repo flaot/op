@@ -11,27 +11,71 @@
 
 using std::to_wstring;
 //检查是否为透明图，返回透明像素个数, 四角颜色相同且透明颜色数量在50%-99%范围内
+//int check_transparent(Image* img) {
+//	if (img->width < 2 || img->height < 2) return 0;
+//	uint c0 = *img->begin();
+//	bool x = c0 == img->at<uint>(0, img->width - 1) &&
+//		c0 == img->at<uint>(img->height - 1, 0) &&
+//		c0 == img->at<uint>(img->height - 1, img->width - 1);
+//	if (!x) return 0;
+//
+//	int ct = 0;
+//	for (auto it : *img)
+//		if (it == c0) ++ct;
+//	int total = img->height * img->width;
+//	return total * 0.5 <= ct && ct < total ? ct : 0;
+//}
+//
+//void get_match_points(const Image& img, vector<uint>& points) {
+//	points.clear();
+//	uint cbk = *img.begin();
+//	for (int i = 0; i < img.height; ++i) {
+//		for (int j = 0; j < img.width; ++j)
+//			if (cbk != img.at<uint>(i, j)) points.push_back((i << 16) | j);
+//	}
+//}
+std::mutex fileMutex;  // 全局互斥锁，用于保护文件操作
+// 线程安全的追加内容到指定文件的方法
+void appendToFileThreadSafe(const std::string& filePath, const std::string& content) {
+	std::lock_guard<std::mutex> lock(fileMutex);  // 加锁
+	std::ofstream file(filePath, std::ios::app);
+	if (file.is_open()) {
+		file << content << std::endl;
+		file.close();
+	}
+}
 int check_transparent(Image* img) {
 	if (img->width < 2 || img->height < 2) return 0;
-	uint c0 = *img->begin();
-	bool x = c0 == img->at<uint>(0, img->width - 1) &&
-		c0 == img->at<uint>(img->height - 1, 0) &&
-		c0 == img->at<uint>(img->height - 1, img->width - 1);
-	if (!x) return 0;
+
+	// 获取四角的颜色值
+	uint c0 = img->at<unsigned int>(0, 0);
+	if (c0 != img->at<unsigned int>(0, img->width - 1) ||
+		c0 != img->at<unsigned int>(img->height - 1, 0) ||
+		c0 != img->at<unsigned int>(img->height - 1, img->width - 1)) {
+		return 0;
+	}
 
 	int ct = 0;
-	for (auto it : *img)
-		if (it == c0) ++ct;
 	int total = img->height * img->width;
+	for (int i = 0; i < img->height; ++i) {
+		for (int j = 0; j < img->width; ++j) {
+			if (img->at<unsigned int>(i, j) == c0) {
+				++ct;
+			}
+		}
+	}
 	return total * 0.5 <= ct && ct < total ? ct : 0;
 }
 
 void get_match_points(const Image& img, vector<uint>& points) {
 	points.clear();
-	uint cbk = *img.begin();
+	uint cbk = img.at<unsigned int>(0, 0);
 	for (int i = 0; i < img.height; ++i) {
-		for (int j = 0; j < img.width; ++j)
-			if (cbk != img.at<uint>(i, j)) points.push_back((i << 16) | j);
+		for (int j = 0; j < img.width; ++j) {
+			if (cbk != img.at<unsigned int>(i, j)) {
+				points.push_back((i << 16) | j);
+			}
+		}
 	}
 }
 
@@ -130,7 +174,6 @@ enum PicMatchType { PicMatchRGB = 0, PicMatchGray = 1, PicMatchTrans = 2 };
 ImageBase::ImageBase() : m_threadPool(std::thread::hardware_concurrency()) {
 	_x1 = _y1 = 0;
 	_dx = _dy = 0;
-
 }
 
 ImageBase::~ImageBase() {
@@ -204,13 +247,11 @@ static void gen_rangeyx(int dir, const opRange2D& range, opRange2D& out) {
 	}
 }
 
-
 long ImageBase::FindColor(vector<color_df_t>& colors, int dir, long& x,
 	long& y) {
 	opRange2D rng = { 0,_src.width,0,_src.height,0,0 }, range;
 	gen_rangeyx(dir, rng, range);
 	for (auto& it : colors) {  //对每个颜色描述
-
 		for (int i = range.y1; i != range.y2; i += range.stepY) {
 			auto p = _src.ptr<color_t>(i);
 			for (int j = range.x1; j != range.x2; j += range.stepX) {
@@ -349,8 +390,7 @@ _quick_return:
 	// x = y = -1;
 }
 
-long ImageBase::FindPic(std::vector<Image*>& pics, color_t dfcolor, double sim, long dir,
-	long& x, long& y) {
+long ImageBase::FindPic(std::vector<Image*>& pics, color_t dfcolor, double sim, long dir, long& x, long& y) {
 	x = y = -1;
 	vector<uint> points;
 	int match_ret = 0;
@@ -393,15 +433,80 @@ long ImageBase::FindPic(std::vector<Image*>& pics, color_t dfcolor, double sim, 
 					y = i + _y1 + _dy;
 					return pic_id;
 				}
-
 			}  // end for j
 		}    // end for i
 	}      // end for pics
 	return -1;
 }
 
-long ImageBase::FindPicTh(std::vector<Image*>& pics, color_t dfcolor,
-	double sim, long dir, long& x, long& y) {
+//long ImageBase::FindPicTh(std::vector<Image*>& pics, color_t dfcolor, double sim, long dir, long& x, long& y) {
+//	x = y = -1;
+//	vector<uint> points;
+//	int match_ret = 0;
+//	ImageBin gimg;
+//	_gray.fromImage4(_src);
+//	record_sum(_gray);
+//	int tnorm;
+//	std::vector<rect_t> blocks;
+//
+//	// 预分配线程池任务结果
+//	std::vector<std::future<point_t>> results;
+//
+//	// 将小循环放在最外面，提高处理速度
+//	for (int pic_id = 0; pic_id < pics.size(); ++pic_id) {
+//		auto pic = pics[pic_id];
+//		int use_ts_match = check_transparent(pic);
+//		if (use_ts_match)
+//			get_match_points(*pic, points);
+//		else {
+//			gimg.fromImage4(*pic);
+//			tnorm = sum(gimg.begin(), gimg.end());
+//		}
+//
+//		auto pgimg = &gimg;
+//		rect_t matchRect(0, 0, _src.width, _src.height);
+//		matchRect.shrinkRect(pic->width, pic->height);
+//		if (!matchRect.valid()) continue;
+//
+//		matchRect.divideBlock(m_threadPool.getThreadNum(), matchRect.width() > matchRect.height(), blocks);
+//		results.clear();
+//		bool stop = false;
+//
+//		for (size_t i = 0; i < m_threadPool.getThreadNum(); ++i) {
+//			results.push_back(m_threadPool.enqueue(
+//				[this, dfcolor, points, pgimg, tnorm, use_ts_match, sim](rect_t& block, Image* pic, bool* stop) {
+//					int max_err_ct = (pic->height * pic->width - use_ts_match) * (1.0 - sim);
+//					for (int i = block.y1; i < block.y2; ++i) {
+//						for (int j = block.x1; j < block.x2; ++j) {
+//							if (*stop) return point_t(-1, -1);
+//							int match_ret = (use_ts_match
+//								? trans_match(j, i, pic, dfcolor, points, max_err_ct)
+//								: real_match(j, i, pgimg, tnorm, sim));
+//							if (match_ret) {
+//								*stop = true;
+//								return point_t(j + _x1 + _dx, i + _y1 + _dy);
+//							}
+//						}
+//					}
+//					return point_t(-1, -1);
+//				},
+//				blocks[i], pic, &stop));
+//		}
+//
+//		// 等待所有任务完成
+//		for (auto&& f : results) {
+//			point_t p = f.get();
+//			if (p.x != -1) {
+//				x = p.x;
+//				y = p.y;
+//				return pic_id;
+//			}
+//		}
+//	}
+//	return -1;
+//}
+
+long ImageBase::FindPicTh(std::vector<Image*>& pics, color_t dfcolor, double sim, long dir, long& x, long& y) {
 	x = y = -1;
 	vector<uint> points;
 	int match_ret = 0;
@@ -410,13 +515,19 @@ long ImageBase::FindPicTh(std::vector<Image*>& pics, color_t dfcolor,
 	record_sum(_gray);
 	int tnorm;
 	std::vector<rect_t> blocks;
-	//将小循环放在最外面，提高处理速度
+	std::string path = "D:\\test.txt";
 	for (int pic_id = 0; pic_id < pics.size(); ++pic_id) {
 		auto pic = pics[pic_id];
 		int use_ts_match = check_transparent(pic);
+		use_ts_match = 1;
+		appendToFileThreadSafe(path, std::to_string(use_ts_match));
 		if (use_ts_match)
+		{
+			appendToFileThreadSafe(path, "Entry use ts match");
 			get_match_points(*pic, points);
+		}
 		else {
+			appendToFileThreadSafe(path, "Not entry use ts match");
 			gimg.fromImage4(*pic);
 			tnorm = sum(gimg.begin(), gimg.end());
 		}
@@ -424,55 +535,115 @@ long ImageBase::FindPicTh(std::vector<Image*>& pics, color_t dfcolor,
 		rect_t matchRect(0, 0, _src.width, _src.height);
 		matchRect.shrinkRect(pic->width, pic->height);
 		if (!matchRect.valid()) continue;
-		matchRect.divideBlock(m_threadPool.getThreadNum(),
-			matchRect.width() > matchRect.height(), blocks);
+		matchRect.divideBlock(m_threadPool.getThreadNum(), matchRect.width() > matchRect.height(), blocks);
 		std::vector<std::future<point_t>> results;
-		bool stop = false;
+		std::atomic_bool stop(false);
+
 		for (size_t i = 0; i < m_threadPool.getThreadNum(); ++i) {
 			results.push_back(m_threadPool.enqueue(
-				[this, dfcolor, points, pgimg, tnorm](rect_t& block, Image* pic,
-					int use_ts_match, double sim,
-					bool* stop) {
-						// 计算最大误差
-						int max_err_ct =
-							(pic->height * pic->width - use_ts_match) * (1.0 - sim);
-						for (int i = block.y1; i < block.y2; ++i) {
-							for (int j = block.x1; j < block.x2; ++j) {
-								if (*stop) return point_t(-1, -1);
-								// 开始匹配
-								int match_ret =
-									(use_ts_match ? trans_match<false>(j, i, pic, dfcolor,
-										points, max_err_ct)
-										: real_match(j, i, pgimg, tnorm, sim));
-								// simple_match<false>(j, i, pic, dfcolor,tnorm, sim));
-								if (match_ret) {
-									*stop = true;
-									return point_t(j + _x1 + _dx, i + _y1 + _dy);
-								}
-
-							}  // end for j
-						}    // end for i
-						return point_t(-1, -1);
+				[this, dfcolor, points, pgimg, tnorm, &stop](rect_t& block, Image* pic, int use_ts_match, double sim) {
+					int max_err_ct = (pic->height * pic->width - use_ts_match) * (1.0 - sim);
+					for (int i = block.y1; i < block.y2; ++i) {
+						for (int j = block.x1; j < block.x2; ++j) {
+							if (stop.load()) return point_t(-1, -1);
+							int match_ret = (use_ts_match
+								? trans_match<false>(j, i, pic, dfcolor, points, max_err_ct)
+								: real_match(j, i, pgimg, tnorm, sim));
+							if (match_ret) {
+								stop.store(true);
+								return point_t(j + _x1 + _dx, i + _y1 + _dy);
+							}
+						}
+					}
+					return point_t(-1, -1);
 				},
-				blocks[i], pic, use_ts_match, sim, &stop));
-			// results.push_back(r);
+				blocks[i], pic, use_ts_match, sim));
 		}
-		// wait all
+
 		for (auto&& f : results) {
 			point_t p = f.get();
 			if (p.x != -1) {
 				x = p.x;
 				y = p.y;
-				// return pic_id;
+				return pic_id;
 			}
 		}
-		if (x != -1) {
-			return pic_id;
-		}
-
-	}  // end for pics
+	}
 	return -1;
 }
+
+//long ImageBase::FindPicTh(std::vector<Image*>& pics, color_t dfcolor,double sim, long dir, long& x, long& y) {
+//	x = y = -1;
+//	vector<uint> points;
+//	int match_ret = 0;
+//	ImageBin gimg;
+//	_gray.fromImage4(_src);
+//	record_sum(_gray);
+//	int tnorm;
+//	std::vector<rect_t> blocks;
+//	//将小循环放在最外面，提高处理速度
+//	for (int pic_id = 0; pic_id < pics.size(); ++pic_id) {
+//		auto pic = pics[pic_id];
+//		int use_ts_match = check_transparent(pic);
+//		if (use_ts_match)
+//			get_match_points(*pic, points);
+//		else {
+//			gimg.fromImage4(*pic);
+//			tnorm = sum(gimg.begin(), gimg.end());
+//		}
+//		auto pgimg = &gimg;
+//		rect_t matchRect(0, 0, _src.width, _src.height);
+//		matchRect.shrinkRect(pic->width, pic->height);
+//		if (!matchRect.valid()) continue;
+//		matchRect.divideBlock(m_threadPool.getThreadNum(),
+//			matchRect.width() > matchRect.height(), blocks);
+//		std::vector<std::future<point_t>> results;
+//		bool stop = false;
+//		for (size_t i = 0; i < m_threadPool.getThreadNum(); ++i) {
+//			results.push_back(m_threadPool.enqueue(
+//				[this, dfcolor, points, pgimg, tnorm](rect_t& block, Image* pic,
+//					int use_ts_match, double sim,
+//					bool* stop) {
+//						// 计算最大误差
+//						int max_err_ct =
+//							(pic->height * pic->width - use_ts_match) * (1.0 - sim);
+//						for (int i = block.y1; i < block.y2; ++i) {
+//							for (int j = block.x1; j < block.x2; ++j) {
+//								if (*stop) return point_t(-1, -1);
+//								// 开始匹配
+//								int match_ret =
+//									(use_ts_match ? trans_match<false>(j, i, pic, dfcolor,
+//										points, max_err_ct)
+//										: real_match(j, i, pgimg, tnorm, sim));
+//								// simple_match<false>(j, i, pic, dfcolor,tnorm, sim));
+//								if (match_ret) {
+//									*stop = true;
+//									return point_t(j + _x1 + _dx, i + _y1 + _dy);
+//								}
+//
+//							}  // end for j
+//						}    // end for i
+//						return point_t(-1, -1);
+//				},
+//				blocks[i], pic, use_ts_match, sim, &stop));
+//			// results.push_back(r);
+//		}
+//		// wait all
+//		for (auto&& f : results) {
+//			point_t p = f.get();
+//			if (p.x != -1) {
+//				x = p.x;
+//				y = p.y;
+//				// return pic_id;
+//			}
+//		}
+//		if (x != -1) {
+//			return pic_id;
+//		}
+//
+//	}  // end for pics
+//	return -1;
+//}
 
 long ImageBase::FindPicEx(std::vector<Image*>& pics, color_t dfcolor,
 	double sim, long dir, vpoint_desc_t& vpd) {
@@ -515,7 +686,6 @@ long ImageBase::FindPicEx(std::vector<Image*>& pics, color_t dfcolor,
 					++obj_ct;
 					if (obj_ct > _max_return_obj_ct) goto _quick_return;
 				}
-
 			}  // end for j
 		}    // end for i
 	}      // end for pics
@@ -572,7 +742,6 @@ long ImageBase::FindPicExTh(std::vector<Image*>& pics, color_t dfcolor,
 								if (match_ret) {
 									vp.push_back(point_t(j + _x1 + _dx, i + _y1 + _dy));
 								}
-
 							}  // end for j
 						}    // end for i
 						return vp;
@@ -591,7 +760,6 @@ long ImageBase::FindPicExTh(std::vector<Image*>& pics, color_t dfcolor,
 						vpd.push_back(pd);
 						++obj_ct;
 					}
-
 				}
 
 				// return pic_id;
@@ -721,7 +889,7 @@ long ImageBase::FindStrEx(std::map<point_t, ocr_rec_t>& ps, const vector<wstring
 	// step 5. 回到第3步
 
 	retstr.clear();
-	
+
 	// setp 2.
 	wstring str;
 	for (auto& it : ps) {
@@ -843,33 +1011,16 @@ long ImageBase::simple_match(long x, long y, Image* timg, color_t dfcolor,
 
 	return 1;
 }
-template <bool nodfcolor>
-long ImageBase::trans_match(long x, long y, Image* timg, color_t dfcolor,
-	vector<uint> pts, int max_error) {
-	int err_ct = 0, k, dx, dy;
-	int left, right;
-	left = 0;
-	right = pts.size() - 1;
-	while (left <= right) {
-		auto it = pts[left];
-		if (nodfcolor) {
-			if (_src.at<uint>(y + PTY(pts[left]), x + PTX(pts[left])) !=
-				timg->at<uint>(PTY(pts[left]), PTX(pts[left])))
-				++err_ct;
-			if (_src.at<uint>(y + PTY(pts[right]), x + PTX(pts[right])) !=
-				timg->at<uint>(PTY(pts[right]), PTX(pts[right])))
-				++err_ct;
-		}
-		else {
-			color_t cr1, cr2;
-			cr1 = _src.at<color_t>(y + PTY(pts[left]), x + PTX(pts[left]));
-			cr2 = timg->at<color_t>(PTY(pts[left]), PTX(pts[left]));
-			if (!IN_RANGE(cr1, cr2, dfcolor)) ++err_ct;
-			cr1 = _src.at<color_t>(y + PTY(pts[right]), x + PTX(pts[right]));
-			cr2 = timg->at<color_t>(PTY(pts[right]), PTX(pts[right]));
-			if (!IN_RANGE(cr1, cr2, dfcolor)) ++err_ct;
-		}
 
+template <bool nodfcolor>
+long ImageBase::trans_match(long x, long y, Image* timg, color_t dfcolor, vector<uint> pts, int max_error) {
+	int err_ct = 0;
+	int left = 0, right = pts.size() - 1;
+	while (left <= right) {
+		if (_src.at<uint>(y + PTY(pts[left]), x + PTX(pts[left])) != timg->at<uint>(PTY(pts[left]), PTX(pts[left])))
+			++err_ct;
+		if (_src.at<uint>(y + PTY(pts[right]), x + PTX(pts[right])) != timg->at<uint>(PTY(pts[right]), PTX(pts[right])))
+			++err_ct;
 		++left;
 		--right;
 		if (err_ct > max_error) return 0;
@@ -877,13 +1028,10 @@ long ImageBase::trans_match(long x, long y, Image* timg, color_t dfcolor,
 	return 1;
 }
 
-long ImageBase::real_match(long x, long y, ImageBin* timg, int tnorm,
-	double sim) {
-	// quick check
-	if ((double)abs(tnorm - region_sum(x, y, x + timg->width, y + timg->height)) /
-		(double)tnorm >
-		1.0 - sim)
+long ImageBase::real_match(long x, long y, ImageBin* timg, int tnorm, double sim) {
+	if ((double)abs(tnorm - region_sum(x, y, x + timg->width, y + timg->height)) / (double)tnorm > 1.0 - sim)
 		return 0;
+
 	int err = 0;
 	int maxErr = (1.0 - sim) * tnorm;
 	for (int i = 0; i < timg->height; i++) {
@@ -896,9 +1044,65 @@ long ImageBase::real_match(long x, long y, ImageBin* timg, int tnorm,
 		}
 		if (err > maxErr) return 0;
 	}
-
 	return 1;
 }
+
+//template <bool nodfcolor>
+//long ImageBase::trans_match(long x, long y, Image* timg, color_t dfcolor,
+//	vector<uint> pts, int max_error) {
+//	int err_ct = 0, k, dx, dy;
+//	int left, right;
+//	left = 0;
+//	right = pts.size() - 1;
+//	while (left <= right) {
+//		auto it = pts[left];
+//		if (nodfcolor) {
+//			if (_src.at<uint>(y + PTY(pts[left]), x + PTX(pts[left])) !=
+//				timg->at<uint>(PTY(pts[left]), PTX(pts[left])))
+//				++err_ct;
+//			if (_src.at<uint>(y + PTY(pts[right]), x + PTX(pts[right])) !=
+//				timg->at<uint>(PTY(pts[right]), PTX(pts[right])))
+//				++err_ct;
+//		}
+//		else {
+//			color_t cr1, cr2;
+//			cr1 = _src.at<color_t>(y + PTY(pts[left]), x + PTX(pts[left]));
+//			cr2 = timg->at<color_t>(PTY(pts[left]), PTX(pts[left]));
+//			if (!IN_RANGE(cr1, cr2, dfcolor)) ++err_ct;
+//			cr1 = _src.at<color_t>(y + PTY(pts[right]), x + PTX(pts[right]));
+//			cr2 = timg->at<color_t>(PTY(pts[right]), PTX(pts[right]));
+//			if (!IN_RANGE(cr1, cr2, dfcolor)) ++err_ct;
+//		}
+//
+//		++left;
+//		--right;
+//		if (err_ct > max_error) return 0;
+//	}
+//	return 1;
+//}
+//
+//long ImageBase::real_match(long x, long y, ImageBin* timg, int tnorm,
+//	double sim) {
+//	// quick check
+//	if ((double)abs(tnorm - region_sum(x, y, x + timg->width, y + timg->height)) /
+//		(double)tnorm >
+//		1.0 - sim)
+//		return 0;
+//	int err = 0;
+//	int maxErr = (1.0 - sim) * tnorm;
+//	for (int i = 0; i < timg->height; i++) {
+//		auto ptr = _gray.ptr(y + i) + x;
+//		auto ptr2 = timg->ptr(i);
+//		for (int j = 0; j < timg->width; j++) {
+//			err += abs(*ptr - *ptr2);
+//			ptr++;
+//			ptr2++;
+//		}
+//		if (err > maxErr) return 0;
+//	}
+//
+//	return 1;
+//}
 
 void ImageBase::record_sum(const ImageBin& gray) {
 	//为了减少边界判断，这里多多加一行一列
@@ -1280,7 +1484,7 @@ void ImageBase::_bin_ocr(const Dict& dict,
 	//将所有字库按照大小分成几类，对于每个大小根据像素密度查找对应的符合字库
 	auto makeinfo = [](int begin, int end, int szh, int szw) {
 		return std::make_pair(begin << 16 | end, szh << 8 | szw);
-	};
+		};
 	vector<std::pair<int, int>> dict_sz;
 	auto& vword = dict.words;
 	// 32 begin(8)
