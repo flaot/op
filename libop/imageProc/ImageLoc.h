@@ -103,7 +103,13 @@ public:
 	long FindColorBlock(double sim, long count, long height, long width, long& x, long& y);
 
 	long FindColorBlockEx(double sim, long count, long height, long width, std::wstring& retstr);
-
+	/// <summary>
+/// 识别屏幕范围(x1,y1,x2,y2)内符合 color_format 的字符串
+/// </summary>
+/// <param name="dict">字库</param>
+/// <param name="sim">相似度,取值范围 0.1-1.0</param>
+/// <param name="retstr">返回识别到的字符串</param>
+/// <returns></returns>
 	long Ocr(Dict& dict, double sim, std::wstring& ret_str);
 
 	long OcrEx(Dict& dict, double sim, std::wstring& out_str);
