@@ -13,7 +13,7 @@ OcrWrapper::OcrWrapper() : m_engine(nullptr) {
 	cout << "OcrWrapper::OcrWrapper()" << endl;
 #ifdef _M_X64
 	std::wstring paddle_path = opEnv::getBasePath() + L"/paddle";
-	auto dllName =  L"paddle_ocr.dll";
+	auto dllName = L"paddle_ocr.dll";
 	std::wstring root = paddle_path;
 	wstring detName = root + L"/models/ch_PP-OCRv3_det_infer";
 	wstring recName = root + L"/models/ch_PP-OCRv3_rec_infer";
@@ -23,16 +23,16 @@ OcrWrapper::OcrWrapper() : m_engine(nullptr) {
 		"--det_model_dir=" + _ws2string(detName),
 		"--rec_model_dir=" + _ws2string(recName),
 		"--rec_char_dict_path=" + _ws2string(otherName),
-		"--enable_mkldnn=true"
+		"--enable_mkldnn=false"
 	};
 #else
 	//tess
 	std::wstring paddle_path = opEnv::getBasePath() + L"/tess";
 	auto dllName = L"tess_engine.dll";
-	std::wstring root = opEnv::getBasePath()+L"/tess";
+	std::wstring root = opEnv::getBasePath() + L"/tess";
 	vector<string> argvs = {
 		"tests",
-		_ws2string(root)+"/tess_model",
+		_ws2string(root) + "/tess_model",
 		"chi_sim"
 	};
 #endif
@@ -48,7 +48,6 @@ OcrWrapper* OcrWrapper::getInstance() {
 }
 
 int OcrWrapper::init(const std::wstring& engine, const std::wstring& dllName, const vector<string>& argvs) {
-	
 	//只需加载一次
 	if (ocr_engine_init == nullptr) {
 		wchar_t old_path[512] = {};
@@ -57,8 +56,7 @@ int OcrWrapper::init(const std::wstring& engine, const std::wstring& dllName, co
 		::SetDllDirectoryW(engine.c_str());
 		auto absdllName = engine + L"/" + dllName;
 		auto hdll = LoadLibraryW(absdllName.c_str());
-		
-		
+
 		if (hdll == NULL) {
 			::SetDllDirectoryW(old_path);
 			cout << "error: LoadLibraryA false:" << GetLastErrorAsString() << endl;
@@ -74,22 +72,21 @@ int OcrWrapper::init(const std::wstring& engine, const std::wstring& dllName, co
 			::SetDllDirectoryW(old_path);
 			return -2;
 		}
-
 	}
 	if (m_engine == nullptr) {
 		const int argc = argvs.size();
-		char** argv=new char*[argc];
+		char** argv = new char* [argc];
 		//cout << "ocr_engine_init before\n";
 		for (int i = 0; i < argc; i++) {
 			argv[i] = new char[argvs[i].size() + 1];
 			strcpy(argv[i], argvs[i].c_str());
 			//cout << i << " new: " << "address:" << (void*)(argv[i]) << argv[i] << "\n";
 		}
-		ocr_engine_init(&m_engine, argv,argc);
+		ocr_engine_init(&m_engine, argv, argc);
 		//cout << "ocr_engine_init after\n";
 		for (int i = 0; i < argc; i++) {
 			//cout <<i<< " delete: " << "address:"<<(void*)(argv[i]) << argv[i]<< "\n";
-			delete []argv[i];
+			delete[]argv[i];
 		}
 		delete[]argv;
 		//cout << " delete\n";
@@ -110,8 +107,6 @@ int OcrWrapper::release() {
 	return 0;
 }
 
-
-
 int OcrWrapper::ocr(byte* data, int w, int h, int bpp, vocr_rec_t& result) {
 	const std::lock_guard<std::mutex> lock(m_mutex);
 	result.clear();
@@ -131,11 +126,9 @@ int OcrWrapper::ocr(byte* data, int w, int h, int bpp, vocr_rec_t& result) {
 			ts.text = _s2wstring(utf8_to_ansi(p.text));
 			result.push_back(ts);
 			free(results[i].text);
-
 		}
 		free(results);
 	}
-	
+
 	return n;
 }
-

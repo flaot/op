@@ -788,6 +788,21 @@ STDMETHODIMP OpInterface::FindPic(LONG x1, LONG y1, LONG x2, LONG y2, BSTR files
 
 	return S_OK;
 }
+
+//查找指定区域内的图片
+STDMETHODIMP OpInterface::FindPicS(LONG x1, LONG y1, LONG x2, LONG y2, BSTR files, BSTR delta_color, DOUBLE sim, LONG dir, VARIANT* x, VARIANT* y, BSTR* retstr)
+{
+	wstring s;
+	x->vt = y->vt = VT_I4;
+	
+	obj.FindPicS(x1, y1, x2, y2, files, delta_color, sim, dir, &x->lVal, &y->lVal, s);
+	CComBSTR newstr;
+	HRESULT hr;
+	newstr.Append(s.data());
+	hr = newstr.CopyTo(retstr);
+	return S_OK;
+}
+
 //查找多个图片
 STDMETHODIMP OpInterface::FindPicEx(LONG x1, LONG y1, LONG x2, LONG y2, BSTR files, BSTR delta_color, DOUBLE sim, LONG dir, BSTR *retstr)
 {

@@ -37,6 +37,7 @@ class test {
 
   int TestNox(libop *op) {
     long hwnd = 0, subhwnd = 0, ret = 0;
+    
     op->FindWindow(L"Qt5QWindowIcon", L"夜神模拟器", &hwnd);
     if (!hwnd) {
       std::wcout << L"FindWindow of 夜神模拟器 false!\n";
